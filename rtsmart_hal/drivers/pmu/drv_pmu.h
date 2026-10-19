@@ -47,6 +47,10 @@ int drv_pmu_key_wait_shutdown(drv_pmu_inst_t *inst, int timeout_ms);
 int drv_pmu_key_confirm_shutdown(drv_pmu_inst_t *inst);
 
 /* Shut down immediately; this deliberately bypasses the long-press policy. */
+/* Polling notification does not install or send POSIX signals. */
+int drv_pmu_shutdown_register_poll(drv_pmu_inst_t *inst);
+int drv_pmu_shutdown_poll(drv_pmu_inst_t *inst);
+
 int drv_pmu_shutdown_now(drv_pmu_inst_t *inst);
 
 /* Read the current level of the configured shutdown wakeup pad. */
