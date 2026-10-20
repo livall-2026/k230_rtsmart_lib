@@ -96,10 +96,12 @@ struct drv_pmu_wakeup_source {
 #define PMU_IOCTL_GET_WAKEUP_SOURCE \
     _IOR('P', 0x08, struct drv_pmu_wakeup_source)
 
+#define PMU_IOCTL_REGISTER_POLL_NOTIFY _IO('P', 0x09)
 struct drv_pmu_inst {
     int fd;
     int signo;
     bool notify_registered;
+    bool polling;
     bool signal_was_blocked;
     sigset_t waitset;
 };
@@ -306,10 +308,31 @@ int drv_pmu_key_unregister_notify(drv_pmu_inst_t *inst)
         ret = -1;
     }
 
-    drv_pmu_unblock_signal(inst);
+    if (!inst->polling) drv_pmu_unblock_signal(inst);
+    inst->polling = false;
     inst->notify_registered = false;
 
     return ret;
+}
+
+int drv_pmu_shutdown_register_poll(drv_pmu_inst_t *inst)
+{
+    if (!drv_pmu_is_open(inst) || inst->notify_registered)
+        return -1;
+    if (drv_pmu_ioctl(inst, PMU_IOCTL_REGISTER_POLL_NOTIFY, NULL,
+                      "[hal_pmu] ioctl(REGISTER_POLL_NOTIFY)") < 0)
+        return -1;
+    inst->polling = true;
+    inst->notify_registered = true;
+    return 0;
+}
+
+/* 0=request, 1=no request, -1=error, matching the existing wait API. */
+int drv_pmu_shutdown_poll(drv_pmu_inst_t *inst)
+{
+    if (!drv_pmu_is_open(inst) || !inst->notify_registered || !inst->polling)
+        return -1;
+    return drv_pmu_read_shutdown_request(inst);
 }
 
 int drv_pmu_key_wait_shutdown(drv_pmu_inst_t *inst, int timeout_ms)
